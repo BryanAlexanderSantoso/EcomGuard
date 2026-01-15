@@ -226,9 +226,9 @@ This project is licensed under the MIT License.
 
 ## 👥 Team
 
-- **Developer**: Your Team
+- **Developer**: Bryan Santoso
 - **Database**: Supabase
-- **Hosting**: Vercel (recommended)
+- **Hosting**: Malas Hosting
 
 ---
 
