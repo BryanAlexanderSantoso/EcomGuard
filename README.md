@@ -9,25 +9,9 @@ Platform terintegrasi untuk melindungi seller, buyer, dan admin dari penipuan re
 
 ---
 
-## ✨ Fitur Utama
-
-### 🛍️ Untuk Seller
-- ✅ Upload bukti video packing
-- ✅ Database blacklist pembeli nakal
-- ✅ Statistik win rate & revenue protection
-- ✅ Laporan komunitas real-time
-
-### 👤 Untuk Buyer
-- ✅ Panduan unboxing yang benar
-- ✅ Scan QR code untuk verifikasi
-- ✅ Kirim bukti instan ke seller
-- ✅ Trust score tracking
-
-### 🛡️ Untuk Admin
-- ✅ Review sengketa seller vs buyer
-- ✅ Verifikasi laporan blacklist
-- ✅ Global security audit
-- ✅ Real-time monitoring
+### 🛡️ AI & Security
+- ✅ **AI Package Fraud Detector**: Deteksi otomatis rekayasa gambar AI pada bukti paket.
+- ✅ **Metadata Locking**: Mengunci koordinat GPS, timestamp, dan device ID pada bukti digital.
 
 ---
 
@@ -49,6 +33,7 @@ Edit `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_GEMINI_API_KEY=your_google_gemini_api_key
 ```
 
 ### 3. Jalankan Migrasi Database
