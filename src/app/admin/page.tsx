@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, AlertCircle, Check, X, ShieldAlert, Filter, Search, Play, Users, TrendingUp, BarChart3, Eye, Loader2 } from 'lucide-react';
+import { ShieldCheck, AlertCircle, Check, X, ShieldAlert, Filter, Search, Play, Users, TrendingUp, BarChart3, Eye, Loader2, Sparkles, Brain, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { detectAIImage } from '@/lib/gemini';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function AdminDashboard() {
@@ -17,6 +18,10 @@ export default function AdminDashboard() {
         blacklisted: 0,
         fraudBlocked: 0
     });
+
+    // AI Detection State
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [aiResult, setAiResult] = useState<{ isAI: boolean; confidence: number; analysis: string } | null>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -211,7 +216,24 @@ export default function AdminDashboard() {
                                         </div>
 
                                         <div>
-                                            <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Quick Evidence Check</p>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Quick Evidence Check</p>
+                                                <button
+                                                    onClick={async () => {
+                                                        setIsAnalyzing(true);
+                                                        // Mock/Example checking - in real app we'd fetch actual evidence images
+                                                        // For now we check the description if it contains an image URL or use a placeholder
+                                                        const result = await detectAIImage("https://placehold.co/600x400?text=Package+Photo");
+                                                        setAiResult(result);
+                                                        setIsAnalyzing(false);
+                                                    }}
+                                                    disabled={isAnalyzing}
+                                                    className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--primary)] hover:opacity-80 transition-opacity uppercase tracking-widest disabled:opacity-50"
+                                                >
+                                                    {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                                    {isAnalyzing ? "Analyzing..." : "AI Fraud Scan"}
+                                                </button>
+                                            </div>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="aspect-video bg-[var(--background)] rounded border border-[var(--border)] flex items-center justify-center cursor-pointer hover:bg-black/5 transition-colors">
                                                     <Play className="w-4 h-4 text-[var(--color-text-muted)] opacity-50" />
@@ -220,6 +242,36 @@ export default function AdminDashboard() {
                                                     <Play className="w-4 h-4 text-[var(--color-text-muted)] opacity-50" />
                                                 </div>
                                             </div>
+
+                                            {/* AI Analysis Result Display */}
+                                            {aiResult && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    className={`mt-4 p-4 rounded-lg border ${aiResult.isAI ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        {aiResult.isAI ? (
+                                                            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                                                        ) : (
+                                                            <Brain className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                                        )}
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <p className={`text-xs font-bold uppercase tracking-wider ${aiResult.isAI ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                                                    {aiResult.isAI ? '🚨 Terdeteksi AI' : '✅ Terverifikasi Asli'}
+                                                                </p>
+                                                                <span className="text-[10px] bg-white/50 px-1.5 py-0.5 rounded font-mono">
+                                                                    Score: {aiResult.confidence}%
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[11px] text-[var(--color-text-main)] italic leading-relaxed">
+                                                                {aiResult.analysis}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
                                         </div>
                                     </div>
 

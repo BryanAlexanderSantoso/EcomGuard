@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Scan, PlayCircle, Upload, CheckCircle2, Camera, ShieldCheck, FileText, Loader2 } from 'lucide-react';
+import { Scan, PlayCircle, Upload, CheckCircle2, Camera, ShieldCheck, FileText, Loader2, Sparkles, Brain, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { detectAIImage } from '@/lib/gemini';
+import { useRef } from 'react';
 
 const RecordAction = () => {
     const { user } = useAuth();
@@ -12,6 +14,30 @@ const RecordAction = () => {
     const [resi, setResi] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [isGeneratingLegal, setIsGeneratingLegal] = useState(false);
+
+    // New states for real file upload and AI
+    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [aiResult, setAiResult] = useState<{ isAI: boolean; confidence: number; analysis: string } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64 = reader.result as string;
+            setCapturedImage(base64);
+
+            // Auto run AI Analysis
+            setIsAnalyzing(true);
+            const result = await detectAIImage(base64);
+            setAiResult(result);
+            setIsAnalyzing(false);
+        };
+        reader.readAsDataURL(file);
+    };
 
     const handleUpload = async () => {
         if (!resi || !user) {
@@ -34,19 +60,21 @@ const RecordAction = () => {
 
             if (orderError) throw orderError;
 
-            // 2. Create the packing evidence (mocking the media_url for now)
+            // 2. Create the packing evidence (mocking the media_url for now, or use the captured image if we had storage upload)
             const { error: evidenceError } = await supabase
                 .from('evidences')
                 .insert([{
                     order_id: order.id,
                     uploader_id: user.id,
                     type: 'packing',
-                    media_url: 'https://vimeo.com/placeholder-packing-video', // Mock URL
+                    media_url: capturedImage || 'https://vimeo.com/placeholder-packing-video', // Use captured image if available
                     metadata: {
                         device: 'iPhone 15 Pro',
                         location: 'Depok, Indonesia',
                         fps: 60,
-                        quality: '4K'
+                        quality: '4K',
+                        ai_verified: aiResult?.isAI === false,
+                        ai_score: aiResult?.confidence
                     }
                 }]);
 
@@ -131,31 +159,69 @@ const RecordAction = () => {
                         animate={{ opacity: 1, x: 0 }}
                         className="space-y-6"
                     >
-                        <div className="aspect-video bg-[var(--background)] rounded-xl border border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[var(--surface)] transition-all relative overflow-hidden group">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                        />
 
-                            <div className="w-12 h-12 rounded-full border border-[var(--border)] flex items-center justify-center bg-[var(--surface)] shadow-sm group-hover:scale-105 transition-transform">
-                                <PlayCircle className="text-[var(--primary)] w-6 h-6" />
-                            </div>
-                            <p className="text-[var(--color-text-muted)] font-medium text-sm">Mulai Rekam Video Packing</p>
-                            <div className="flex gap-2 opacity-60">
-                                <span className="text-[10px] border border-[var(--border)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">4K 60FPS</span>
-                                <span className="text-[10px] border border-[var(--border)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">GPS TAGGED</span>
+                        <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="aspect-video bg-[var(--background)] rounded-xl border border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[var(--surface)] transition-all relative overflow-hidden group"
+                        >
+                            {capturedImage ? (
+                                <>
+                                    <img src={capturedImage} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                                    {isAnalyzing ? (
+                                        <div className="relative z-10 flex flex-col items-center gap-2">
+                                            <Loader2 className="w-8 h-8 text-[var(--primary)] animate-spin" />
+                                            <p className="text-xs font-bold text-[var(--primary)] uppercase tracking-widest">AI Scanning...</p>
+                                        </div>
+                                    ) : aiResult ? (
+                                        <div className={`relative z-10 flex flex-col items-center gap-2 p-4 rounded-xl backdrop-blur-md ${aiResult.isAI ? 'bg-rose-50/80 border border-rose-200' : 'bg-emerald-50/80 border border-emerald-200'}`}>
+                                            {aiResult.isAI ? <AlertTriangle className="text-rose-600 w-6 h-6" /> : <Brain className="text-emerald-600 w-6 h-6" />}
+                                            <p className={`text-xs font-black uppercase tracking-widest ${aiResult.isAI ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                                {aiResult.isAI ? 'AI Detected' : 'AI Verified Real'}
+                                            </p>
+                                            <p className="text-[10px] text-center max-w-[200px] font-medium text-dark/60">{aiResult.analysis}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="relative z-10 w-12 h-12 rounded-full border border-white/50 flex items-center justify-center bg-white/20 backdrop-blur-sm shadow-sm group-hover:scale-105 transition-transform">
+                                            <Camera className="text-white w-6 h-6" />
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-12 h-12 rounded-full border border-[var(--border)] flex items-center justify-center bg-[var(--surface)] shadow-sm group-hover:scale-105 transition-transform">
+                                        <Camera className="text-[var(--primary)] w-6 h-6" />
+                                    </div>
+                                    <p className="text-[var(--color-text-muted)] font-medium text-sm">Upload Foto Paket</p>
+                                </>
+                            )}
+
+                            <div className="absolute bottom-2 right-2 flex gap-2">
+                                <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest ${aiResult ? (aiResult.isAI ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white') : 'bg-white/20 backdrop-blur-md text-dark'}`}>
+                                    {aiResult ? `AI SCORE: ${aiResult.confidence}%` : 'AI NEURAL CHECK'}
+                                </span>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <button
-                                onClick={() => setStep(1)}
+                                onClick={() => { setStep(1); setCapturedImage(null); setAiResult(null); }}
                                 className="claude-button-outline w-full"
                             >
                                 Kembali
                             </button>
                             <button
                                 onClick={handleUpload}
-                                disabled={isUploading}
+                                disabled={isUploading || isAnalyzing || !capturedImage}
                                 className="claude-button w-full flex items-center justify-center gap-2"
                             >
-                                {isUploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</> : 'Selesai & Upload'}
+                                {isUploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Securing...</> : 'Selesai & Kunci'}
                             </button>
                         </div>
                     </motion.div>

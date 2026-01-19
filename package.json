@@ -10,6 +10,7 @@
     "migrate": "bash scripts/migrate.sh"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.90.1",
     "@types/pg": "^8.16.0",
     "clsx": "^2.1.1",

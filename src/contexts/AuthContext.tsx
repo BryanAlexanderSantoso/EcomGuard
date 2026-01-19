@@ -36,13 +36,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             try {
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) {
-                    // Check for invalid refresh token or other session errors
-                    if (error.message.includes("Refresh Token Not Found") || error.message.includes("Invalid Refresh Token")) {
+                    // Handle invalid refresh token or session errors gracefully
+                    const isRefreshTokenError = error.message.includes("Refresh Token Not Found") ||
+                        error.message.includes("Invalid Refresh Token");
+
+                    if (isRefreshTokenError) {
+                        // Silently clear session if token is missing/invalid
                         await supabase.auth.signOut();
                         setUser(null);
                         setRole(null);
+                    } else {
+                        console.error('Session init error:', error.message);
                     }
-                    console.error('Session init error:', error.message);
                 } else if (session?.user) {
                     setUser(session.user);
                     const r = await fetchRole(session.user.id);
